@@ -92,7 +92,11 @@ def chat_with_bot(user_message: str, history: list) -> str:
     try:
         chat = model_text.start_chat(history=history)
         
-        system_instruction = "Bạn là một người bạn đồng hành lắng nghe và thấu hiểu. Hãy trả lời ngắn gọn, tích cực và mang tính hỗ trợ tâm lý. Nếu người dùng có cảm xúc tiêu cực thì chủ động gợi ý các bài hát giúp cải thiện tâm trạng. Nếu người dùng có biểu hiện tiêu cực nặng thì yêu cầu người dùng tìm kiếm sự giúp đỡ chuyên nghiệp."
+        system_instruction = (
+            "Bạn là người bạn đồng hành thấu hiểu. Hãy trả lời ngắn gọn, ấm áp. "
+            "1. Nếu người dùng buồn/tiêu cực: Gợi ý cụ thể tên bài hát (kèm ca sĩ) để xoa dịu. "
+            "2. Nếu tiêu cực nặng (tuyệt vọng, hoảng loạn): Hướng dẫn cách bình ổn cảm xúc (như hít thở sâu) hoặc khuyên tìm kiếm chuyên gia tâm lý."
+        )
         
         response = chat.send_message(f"{system_instruction}\nUser: {user_message}")
         return response.text
