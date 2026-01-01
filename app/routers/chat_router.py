@@ -31,7 +31,8 @@ async def send_message(
             history_gemini.append({"role": role, "parts": [msg_content]})
 
     try:
-        bot_reply_text = chat_with_bot(request.message, history_gemini)
+        user_info_dict = request.user_info.dict() if request.user_info else {}
+        bot_reply_text = chat_with_bot(request.message, history_gemini, user_info_dict)
     except Exception as e:
         print(f"Lỗi gọi AI: {e}")
 

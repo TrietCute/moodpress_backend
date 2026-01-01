@@ -17,6 +17,13 @@ class ChatMessage(BaseModel):
         json_encoders={ObjectId: str}
     )
 
+class UserInfoSchema(BaseModel):
+    name: str = "Bạn"
+    gender: str = "bạn"
+    birth_date: str = ""
+    
 class ChatRequest(BaseModel):
     message: str
     history: list = []
+    user_info: UserInfoSchema
+    

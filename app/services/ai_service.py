@@ -7,6 +7,7 @@ import re
 import io
 from app.models.journal import AIAnalysis
 from dotenv import load_dotenv
+from datetime import datetime
 
 load_dotenv()
 
@@ -88,16 +89,38 @@ async def analyze_journal_content(content: str, selected_emotion: str, image_url
         print(f"Lỗi AI: {e}")
         return AIAnalysis(sentiment_score=0.0, detected_emotion="Bình thường", advice="")
 
-def chat_with_bot(user_message: str, history: list) -> str:
+def calculate_age(birth_date_str: str) -> int:
     try:
+        date_only_str = birth_date_str.split("T")[0] 
+        birth_date = datetime.strptime(date_only_str, "%Y-%m-%d")
+        today = datetime.now()
+        age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+        if age < 0: 
+            return 0 
+            
+        return age
+    except Exception as e:
+        print(f"Lỗi tính tuổi: {e}")
+        return 0
+    
+def chat_with_bot(user_message: str, history: list, user_info: dict) -> str:
+    try:
+        name = user_info.get("name", "Bạn")
+        gender = user_info.get("gender", "bạn")
+        birth_date = user_info.get("birth_date", "")
+        
+        age = calculate_age(birth_date) if birth_date else "không rõ"
+        
         chat = model_text.start_chat(history=history)
         
         system_instruction = (
-            "Bạn là người bạn đồng hành thấu hiểu. Hãy trả lời ngắn gọn, ấm áp. "
-            "1. Nếu người dùng buồn/tiêu cực: Gợi ý cụ thể tên bài hát (kèm ca sĩ) để xoa dịu. "
-            "2. Nếu tiêu cực nặng (tuyệt vọng, hoảng loạn): Hướng dẫn cách bình ổn cảm xúc (như hít thở sâu) hoặc khuyên tìm kiếm chuyên gia tâm lý."
+           f"Thông tin người dùng: Tên {name}, {age} tuổi, giới tính {gender}. "
+            "Bạn là người bạn đồng hành thấu hiểu. Hãy xưng hô thân mật, phù hợp với tuổi và giới tính người dùng. "
+            "Quy tắc trả lời:\n"
+            "1. Ngắn gọn, ấm áp.\n"
+            "2. Nếu người dùng buồn/tiêu cực: Gọi tên họ và gợi ý cụ thể tên bài hát (kèm ca sĩ) phù hợp với độ tuổi để xoa dịu.\n"
+            "3. Nếu tiêu cực nặng (tuyệt vọng, hoảng loạn): Hướng dẫn kỹ thuật bình ổn cảm xúc (như hít thở) hoặc khuyên tìm chuyên gia tâm lý."
         )
-        
         response = chat.send_message(f"{system_instruction}\nUser: {user_message}")
         return response.text
     except Exception:
