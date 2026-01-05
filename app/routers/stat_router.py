@@ -44,14 +44,10 @@ async def get_weekly_stats(
     
     raw_entries = list(cursor)
 
-    # --- SỬA 1: Bỏ tham số timezone_offset ---
     mood_stats, active_days, daily_moods, valid_count = process_mood_data(
-        raw_entries, start_date, end_date
+        raw_entries, start_date, end_date, timezone_offset
     )
-
     total_entries = collection.count_documents({"user_id": user_id})
-    
-    # (Lưu ý: calculate_streaks VẪN CẦN timezone_offset để tính 'Hôm nay')
     current_streak, longest_streak = calculate_streaks(user_id, timezone_offset)
 
     return WeeklyStatsResponse(
@@ -81,12 +77,9 @@ async def get_monthly_stats(
     }).sort("timestamp", 1)
     
     raw_entries = list(cursor)
-
-    # --- SỬA 2: Bỏ tham số timezone_offset ---
     mood_stats, active_days, daily_moods, valid_count = process_mood_data(
-        raw_entries, start_date, end_date
+        raw_entries, start_date, end_date, timezone_offset
     )
-
     current_streak, longest_streak = calculate_streaks(user_id, timezone_offset)
     total_entries = collection.count_documents({"user_id": user_id})
 
@@ -108,8 +101,8 @@ async def get_monthly_stats(
 def process_mood_data(
     entries: List[dict], 
     start_date: date, 
-    end_date: date
-    # --- SỬA 3: Xóa tham số timezone_offset khỏi đây ---
+    end_date: date,
+    timezone_offset: int
 ) -> Tuple[List[MoodCountStat], List[bool], List[DailyMoodData], int]:
     
     entries.sort(key=lambda x: x["timestamp"])
@@ -122,9 +115,9 @@ def process_mood_data(
     valid_entries_count = 0
 
     for entry in entries:
-        # Giữ nguyên logic lấy giờ UTC (không cộng offset)
         utc_ts = entry["timestamp"]
-        local_date = utc_ts.date()
+        local_ts = utc_ts + timedelta(minutes=timezone_offset)
+        local_date = local_ts.date()
         
         delta_days = (local_date - start_date).days
         
@@ -165,7 +158,6 @@ def process_mood_data(
 
 
 def calculate_streaks(user_id: str, timezone_offset: int) -> Tuple[int, int]:
-    # (Hàm này GIỮ NGUYÊN, vẫn cần timezone_offset để tính 'Hôm nay' là ngày mấy)
     collection = get_journal_collection()
     cursor = collection.find(
         {"user_id": user_id},
@@ -174,8 +166,8 @@ def calculate_streaks(user_id: str, timezone_offset: int) -> Tuple[int, int]:
 
     local_dates_set = set()
     for doc in cursor:
-        # Giữ nguyên logic không cộng giờ cho dữ liệu
-        local_ts = doc["timestamp"]
+        utc_ts = doc["timestamp"]
+        local_ts = utc_ts + timedelta(minutes=timezone_offset)
         local_dates_set.add(local_ts.date())
 
     sorted_dates = sorted(local_dates_set)
@@ -198,7 +190,6 @@ def calculate_streaks(user_id: str, timezone_offset: int) -> Tuple[int, int]:
         longest_streak = current_run
 
     # 2. Current Streak
-    # Ở đây vẫn cần timezone_offset để biết giờ VN hiện tại
     user_now = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=timezone_offset)
     user_today = user_now.date()
     user_yesterday = user_today - timedelta(days=1)

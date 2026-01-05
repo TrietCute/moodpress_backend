@@ -60,7 +60,6 @@ async def get_journal_history(
         end_date = datetime(year, month + 1, 1)
 
     collection = get_journal_collection()
-    # Truy vấn MongoDB
     cursor = collection.find({
         "user_id": user_id,
         "timestamp": {
@@ -73,7 +72,6 @@ async def get_journal_history(
 
 @router.get("/first-date", response_model=dict)
 async def get_first_journal_date(user_id: str = Depends(get_current_user_id)):
-    # Tìm 1 nhật ký cũ nhất
     collection = get_journal_collection()
     first_entry = collection.find_one(
         {"user_id": user_id},
@@ -81,7 +79,7 @@ async def get_first_journal_date(user_id: str = Depends(get_current_user_id)):
     )
     
     if first_entry:
-        return {"date": first_entry["timestamp"].date()} # Trả về yyyy-mm-dd
+        return {"date": first_entry["timestamp"].date()}
     return {"date": None}
 
 @router.get("/{entry_id}", response_model=JournalEntryResponse)
@@ -131,7 +129,6 @@ async def update_entry(
 
     update_data["image_urls"] = image_urls
 
-    # 3. Cập nhật MongoDB
     if not update_data:
         raise HTTPException(status_code=400, detail="Không có thông tin cập nhật")
 

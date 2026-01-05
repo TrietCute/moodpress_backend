@@ -2,8 +2,6 @@ import os
 from pymongo import MongoClient
 from pymongo.database import Database
 from pymongo.errors import ConnectionFailure
-from datetime import datetime
-from urllib.parse import quote_plus
 from dotenv import load_dotenv
 
 load_dotenv()
