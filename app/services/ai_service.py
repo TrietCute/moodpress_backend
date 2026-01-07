@@ -115,6 +115,7 @@ def chat_with_bot(user_message: str, history: list, user_info: dict) -> str:
         
         system_instruction = (
            f"Thông tin người dùng: Tên {name}, {age} tuổi, giới tính {gender}. "
+            "Nếu người dùng hỏi ngoài hoạt động tâm lý, hãy lịch sự từ chối và hướng họ quay lại chủ đề tâm trạng. "
             "Bạn là người bạn đồng hành thấu hiểu. Hãy xưng hô thân mật, phù hợp với tuổi và giới tính người dùng. "
             "Quy tắc trả lời:\n"
             "1. Ngắn gọn, ấm áp.\n"

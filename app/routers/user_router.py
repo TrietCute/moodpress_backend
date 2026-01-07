@@ -69,64 +69,62 @@ async def link_google_account(
         # 2. Lấy thông tin từ Google
         google_user_id = id_info['sub']
         email = id_info.get('email')
-        name = id_info.get('name')
         picture = id_info.get('picture')
 
         # Nếu ID không thay đổi (đã liên kết rồi), trả về luôn
         if google_user_id == current_user_id:
              return {"message": "Tài khoản đã được liên kết", "new_id": google_user_id}
 
+        current_temp_user = user_collection.find_one({"_id": current_user_id})
+        existing_google_user = user_collection.find_one({"_id": google_user_id})
+
         # 3. CHUYỂN DỮ LIỆU (MIGRATION)
-        # Cập nhật tất cả nhật ký: đổi user_id từ UUID -> Google ID
         journal_collection.update_many(
             {"user_id": current_user_id},
             {"$set": {"user_id": google_user_id}}
         )
 
         # 4. XỬ LÝ USER DOCUMENT
-        # Kiểm tra xem tài khoản Google này đã tồn tại trong DB chưa
-        existing_google_user = user_collection.find_one({"_id": google_user_id})
-
         if existing_google_user:
-            # A. Nếu đã có tài khoản Google:
-            # Ta chỉ cần cập nhật thêm thông tin mới (nếu thiếu)
-            # và xóa tài khoản UUID tạm thời đi.
-            user_collection.delete_one({"_id": current_user_id})
+            update_fields = {}
             
-            # (Tùy chọn: Cập nhật avatar/email mới nhất từ Google)
+            if current_temp_user:
+                if current_temp_user.get("name"):
+                    update_fields["name"] = current_temp_user.get("name")
+                
+                if current_temp_user.get("gender"):
+                    update_fields["gender"] = current_temp_user.get("gender")
+                    
+                if current_temp_user.get("birth"):
+                    update_fields["birth"] = current_temp_user.get("birth")
+                
+                update_fields["picture"] = picture 
+                update_fields["email"] = email
+            
             user_collection.update_one(
                 {"_id": google_user_id},
-                {"$set": {"email": email, "picture": picture}}
+                {"$set": update_fields}
             )
             
-        else:
-            # B. Nếu chưa có tài khoản Google:
-            # Lấy thông tin từ tài khoản UUID cũ
-            old_user_data = user_collection.find_one({"_id": current_user_id})
+            user_collection.delete_one({"_id": current_user_id})
             
-            if old_user_data:
-                # Tạo document mới với _id là Google ID
-                new_user_data = old_user_data.copy()
+        else:
+            if current_temp_user:
+                new_user_data = current_temp_user.copy()
                 new_user_data["_id"] = google_user_id
                 new_user_data["email"] = email
                 new_user_data["picture"] = picture
-                # Ưu tiên tên từ Google nếu chưa đặt tên
-                if not new_user_data.get("name"):
-                    new_user_data["name"] = name
                 
-                # Lưu user mới và xóa user cũ
                 user_collection.insert_one(new_user_data)
                 user_collection.delete_one({"_id": current_user_id})
             else:
-                # Trường hợp hiếm: UUID không tồn tại (lỗi), tạo mới luôn
                 user_collection.insert_one({
                     "_id": google_user_id,
                     "email": email,
-                    "name": name,
-                    "picture": picture
+                    "picture": picture,
+                    "name": id_info.get('name')
                 })
 
-        # 5. Trả về ID mới cho Client để lưu vào SessionManager
         return {
             "message": "Liên kết thành công",
             "new_id": google_user_id,
